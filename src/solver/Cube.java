@@ -1,0 +1,5 @@
+package solver;
+
+class Cube {
+
+}
