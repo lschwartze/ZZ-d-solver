@@ -31,7 +31,7 @@ class Solver implements ActionListener{
 	}
 
 	@Override
-	//handles input using textfield and button
+	//handles input using text-field and button
 	public void actionPerformed(ActionEvent e) {
 		scramble = null;
 		if(e.getSource() == this.button) {
@@ -88,6 +88,12 @@ class Solver implements ActionListener{
 	
 	public static void main(String args[]) {
 		new Solver();
+		/*
+		Corner ybr = new Corner("YBR");
+		System.out.println(ybr.getCurr_pos());
+		ybr.setCurr_pos("UFL");
+		System.out.println(ybr.getCurr_pos());
+		*/
 	}
 	
 }
