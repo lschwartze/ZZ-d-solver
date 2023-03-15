@@ -23,7 +23,7 @@ class Edge {
 		map.put('G', 'F');
 		map.put('B', 'B');
 		map.put('R', 'R');
-		map.put('L', 'O');
+		map.put('O', 'L');
 		map.put('W', 'U');
 		map.put('Y', 'D');
 		sol_pos = calcPos(name, map);
@@ -48,11 +48,15 @@ class Edge {
 	}
 	
 	public int getOrientation() {
-		return this.getOrientation();
+		return this.orientation;
 	}
 	
 	public void setOrientation(int new_orientation) {
 		this.orientation = new_orientation;
 	}
-
+	
+	@Override
+	public String toString() {
+		return this.name + " is at " + this.curr_pos + " in orientation " + this.getOrientation();
+	}
 }

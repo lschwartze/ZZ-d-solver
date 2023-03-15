@@ -14,9 +14,11 @@ class Solver implements ActionListener{
 	JLabel label;
 	JButton button;
 	JTextField text;
-	static String scramble;
+	String scramble;
+	Cube cube;
 	
 	public Solver(){
+		cube = new Cube();
 		JFrame frame = new JFrame("scramble input");
 		text = new JTextField();
 		text.setEditable(true);
@@ -38,15 +40,18 @@ class Solver implements ActionListener{
 			scramble = this.text.getText();
 		}	
 		
-		begin_solve();
+		try {
+			begin_solve();
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		}
 	}
 	
-	public void begin_solve() {
+	public void begin_solve() throws Exception {
 		while(scramble == null) {
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -57,10 +62,22 @@ class Solver implements ActionListener{
 		else {
 			this.label.setText("invalid scramble");
 		}
+		
+		String[] scramble_array = scramble.split("\\s+");
+		//String[] scramble_array = new String[] {"D"};
+		this.cube.scramble(scramble_array);
+		
+		//this.cube.applyTurn("R2");
+		for(Corner c: this.cube.corners) {
+			System.out.println(c.toString());
+		}
+		for(Edge e: this.cube.edges) {
+			System.out.println(e.toString());
+		}
 		return;
 	}
 	
-	public static boolean checkScramble(String s) {
+	public boolean checkScramble(String s) {
 		Set<Character> valid_first = Set.of('R', 'L', 'U', 'D', 'F', 'B');
 		Set<Character> valid_modifier = Set.of('2', '\'');
 		s = s.replaceAll("\\s", "");
@@ -88,12 +105,6 @@ class Solver implements ActionListener{
 	
 	public static void main(String args[]) {
 		new Solver();
-		/*
-		Corner ybr = new Corner("YBR");
-		System.out.println(ybr.getCurr_pos());
-		ybr.setCurr_pos("UFL");
-		System.out.println(ybr.getCurr_pos());
-		*/
 	}
 	
 }
