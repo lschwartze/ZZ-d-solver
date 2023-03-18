@@ -18,6 +18,7 @@ class Solver implements ActionListener{
 	JTextField text;
 	String scramble;
 	Cube cube;
+	Cube tmp_cube;
 	String[] moves = new String[] {"R", "R\'", "R2",
 			   "L", "L\'", "L2",
 			   "U", "U\'", "U2",
@@ -28,6 +29,7 @@ class Solver implements ActionListener{
 	//construct solver
 	public Solver(){
 		cube = new Cube();
+		tmp_cube = new Cube();
 		JFrame frame = new JFrame("scramble input");
 		text = new JTextField();
 		text.setEditable(true);
@@ -77,11 +79,28 @@ class Solver implements ActionListener{
 		//split scramble in string array
 		String[] scramble_array = scramble.split("\\s+");
 		this.cube.scramble(scramble_array);
-		
-		String eo = EOLine("", " ", 0);
-		System.out.println(eo);
+		this.tmp_cube.scramble(scramble_array);
+				
+		//max_depth = 7: every eo can be solved in at most 7 turns
+		String[] eo = EOLine("", " ", " ", 0, 7).split("\\s+");
+		for(String s: eo) {
+			System.out.print(s);
+		}
+		System.out.println("\n");
+		String tmp = "";
+		while(true) {
+			tmp_cube = new Cube();
+			tmp_cube.scramble(scramble_array);
+			tmp = EOLine("", " ", " ", 0, eo.length-1);
+			if(tmp.equals("fail")) {
+				break;
+			}
+			eo = tmp.split("\\s+");
+		}
+		for(String s: eo) {
+			System.out.print(s);
+		}
 		//System.out.println(Simplify(eo));
-		//test scramble: B R2 F R2 D2 B R2 D2 R2 F2 R2 B' R D' R2 B' F2 L F' L' R'
 		return;
 	}
 	
@@ -116,10 +135,11 @@ class Solver implements ActionListener{
 		return true;
 	}
 	
-	public String EOLine(String turns, String previous_move, int num_turns) {
+	//ToDo: search for shorter eo, don't stop if one is found 
+	public String EOLine(String turns, String previous_move, String prevprev, int num_turns, int max_depth) {
 		//construct list of wrong edges
 		ArrayList<Edge> edges = new ArrayList<Edge>();
-		for(Edge e: this.cube.edges) {
+		for(Edge e: this.tmp_cube.edges) {
 			if(e.getOrientation() == 1) {
 				edges.add(e);
 			}
@@ -129,64 +149,92 @@ class Solver implements ActionListener{
 			return turns;
 		}
 		//already used 7 turns but not done, return fail
-		if(num_turns == 7) {
+		if(num_turns == max_depth) {
 			return "fail";
 		}
 		//all edges on front face are wrong, turn F, recursive step
-		if(this.cube.getEdge("UF").getOrientation() == 1 &&
-		   this.cube.getEdge("FR").getOrientation() == 1 &&
-		   this.cube.getEdge("DF").getOrientation() == 1 &&
-		   this.cube.getEdge("FL").getOrientation() == 1) {
-			this.cube.applyTurn("F");
-			String inter_res =  EOLine(turns + "F ", "F", num_turns+1);
+		if(this.tmp_cube.getEdge("UF").getOrientation() == 1 &&
+		   this.tmp_cube.getEdge("FR").getOrientation() == 1 &&
+		   this.tmp_cube.getEdge("DF").getOrientation() == 1 &&
+		   this.tmp_cube.getEdge("FL").getOrientation() == 1) {
+			this.tmp_cube.applyTurn("F");
+			String inter_res =  EOLine(turns + "F ", "F", previous_move, num_turns+1, max_depth);
 			if(!inter_res.equals("fail")) {
 				return inter_res;
 			}
-			this.cube.UndoTurn("F");
+			this.tmp_cube.UndoTurn("F");
 		}
 		//all edges on back face are wrong, turn B, recursive step
-		else if(this.cube.getEdge("UB").getOrientation() == 1 &&
-				this.cube.getEdge("BR").getOrientation() == 1 &&
-				this.cube.getEdge("DB").getOrientation() == 1 &&
-				this.cube.getEdge("BL").getOrientation() == 1) {
-			this.cube.applyTurn("B");
-			String inter_res = EOLine(turns + "B ", "B", num_turns+1);
+		else if(this.tmp_cube.getEdge("UB").getOrientation() == 1 &&
+				this.tmp_cube.getEdge("BR").getOrientation() == 1 &&
+				this.tmp_cube.getEdge("DB").getOrientation() == 1 &&
+				this.tmp_cube.getEdge("BL").getOrientation() == 1) {
+			this.tmp_cube.applyTurn("B");
+			String inter_res = EOLine(turns + "B ", "B", previous_move,num_turns+1, max_depth);
 			if(!inter_res.equals("fail")) {
 				return inter_res;
 			}
-			this.cube.UndoTurn("B");
+			this.tmp_cube.UndoTurn("B");
 		}
 		//loop through allowed turns
 		for(String move: moves) {
-			//if move is modification of previous one, skip
-			if(move.charAt(0) == previous_move.charAt(0)) {
+			//if move is modification of previous one, or turns opposite side from previous one but the same as the one before, skip 
+			if((move.charAt(0) == previous_move.charAt(0)) || (move.charAt(0) == prevprev.charAt(0) && isOpposite(move.charAt(0), previous_move.charAt(0)))) {
 				continue;
 			}
 			//turning F when all edges on F are correct is unnecessary
-			if(move.charAt(0) == 'F' && this.cube.getEdge("UF").getOrientation() == 0 &&
-									 	this.cube.getEdge("FR").getOrientation() == 0 &&
-									 	this.cube.getEdge("DF").getOrientation() == 0 &&
-									 	this.cube.getEdge("FL").getOrientation() == 0) {
+			if(move.charAt(0) == 'F' && this.tmp_cube.getEdge("UF").getOrientation() == 0 &&
+									 	this.tmp_cube.getEdge("FR").getOrientation() == 0 &&
+									 	this.tmp_cube.getEdge("DF").getOrientation() == 0 &&
+									 	this.tmp_cube.getEdge("FL").getOrientation() == 0) {
 				continue;
 			}
 			//turning B when all edges on B are correct is unnecessary
-			if(move.charAt(0) == 'B' && this.cube.getEdge("UB").getOrientation() == 0 &&
-				 						this.cube.getEdge("BR").getOrientation() == 0 &&
-				 						this.cube.getEdge("DB").getOrientation() == 0 &&
-				 						this.cube.getEdge("BL").getOrientation() == 0) {
+			if(move.charAt(0) == 'B' && this.tmp_cube.getEdge("UB").getOrientation() == 0 &&
+				 						this.tmp_cube.getEdge("BR").getOrientation() == 0 &&
+				 						this.tmp_cube.getEdge("DB").getOrientation() == 0 &&
+				 						this.tmp_cube.getEdge("BL").getOrientation() == 0) {
 				continue;
 			}
-			this.cube.applyTurn(move);
-			String inter_res =  EOLine(turns + move + " ", move, num_turns +1);
+			this.tmp_cube.applyTurn(move);
+			String inter_res =  EOLine(turns + move + " ", move, previous_move, num_turns +1, max_depth);
 			if(!inter_res.equals("fail")) {
 				return inter_res;
 			}
-			this.cube.UndoTurn(move);
+			this.tmp_cube.UndoTurn(move);
 		}
 		return "fail";
 	}
 	
-	/*
+	public boolean isOpposite(char mv1, char mv2) {
+		if(mv2 == ' ') {
+			return true;
+		}
+		switch(mv1) {
+		case 'R':
+			return mv2 == 'L';
+		case 'L':
+			return mv2 == 'R';
+		case 'U':
+			return mv2 == 'D';
+		case 'D':
+			return mv2 == 'U';
+		case 'F':
+			return mv2 == 'B';
+		case 'B':
+			return mv2 == 'F';
+		default:
+			return true;
+		}
+	}
+	
+	public static void main(String args[]) {
+		new Solver();
+	}	
+	
+	
+	/*These functions are not used currently but may prove helpful later*/
+	
 	public String Simplify(String str) {
 		String[] s = str.split("\\s+");
 		int i = 0;
@@ -220,28 +268,6 @@ class Solver implements ActionListener{
 		return res;
 	}
 	
-	public boolean isOpposite(char mv1, char mv2) {
-		if(mv2 == ' ') {
-			return true;
-		}
-		switch(mv1) {
-		case 'R':
-			return mv2 == 'L';
-		case 'L':
-			return mv2 == 'R';
-		case 'U':
-			return mv2 == 'D';
-		case 'D':
-			return mv2 == 'U';
-		case 'F':
-			return mv2 == 'B';
-		case 'B':
-			return mv2 == 'F';
-		default:
-			return true;
-		}
-	}
-	
 	public String Combine(String mv1, String mv2) {
 		if(mv1.length() == 1) {
 			mv1 += " ";
@@ -261,9 +287,4 @@ class Solver implements ActionListener{
 		combo.put("\'2", " ");
 		return mv1.substring(0,1) + combo.get(mv1.substring(1,2) + mv2.substring(1,2));
 	}
-	*/
-	
-	public static void main(String args[]) {
-		new Solver();
-	}	
 }
