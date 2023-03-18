@@ -6,7 +6,8 @@ class Cube {
 	Edge[] edges;
 	Corner WGR, WBR, WBO, WGO, YGR, YBR, YBO, YGO;
 	Edge WG, WR, WB, WO, YG, YR, YB, YO, GR, GO, BR, BO;
-	//initialize instance of a cube
+	
+	//construct instance of a cube
 	public Cube() {
 		
 		WGR = new Corner("WGR");
@@ -44,6 +45,7 @@ class Cube {
 		return new Edge("");
 	}
 	
+	//returns name of corner in given position
 	public Corner getCorner(String pos) {
 		for(Corner c: this.corners) {
 			if(c.getCurr_pos().equals(pos)) {
@@ -53,20 +55,20 @@ class Cube {
 		return new Corner("");
 	}
 	
+	//applies scramble to cube
 	public void scramble(String[] scramble) {
 		for(String s: scramble) {
-			try {
-				this.applyTurn(s);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			this.applyTurn(s);
 		}
 		return;
 	}
 	
 	//applies one of 18 possible turns to the cube
-	public void applyTurn(String turn) throws Exception {
+	//currently bad but easy to understand logic
+	//looking for a smarter encoding of pieces to simplify turn logic
+	public void applyTurn(String turn){
 		switch(turn.length()) {
+		//if only one turn, then apply
 		case 1:
 			//handles corners
 			Corner[] face_corners = this.getFaceCorners(turn.substring(0,1));
@@ -112,20 +114,38 @@ class Cube {
 			break;
 			
 		case 2:
+			//in case of double turn, apply twice
+			this.applyTurn(turn.substring(0,1));
+			this.applyTurn(turn.substring(0,1));
 			if(turn.charAt(1) == '2') {
-				this.applyTurn(turn.substring(0,1));
-				this.applyTurn(turn.substring(0,1));
 				break;
 			}
+			//in case of anti-clockwise turn apply thrice
 			else if(turn.charAt(1) == '\'') {
-				this.applyTurn(turn.substring(0,1));
-				this.applyTurn(turn.substring(0,1));
 				this.applyTurn(turn.substring(0,1));
 				break;
 			}
 			
 		default:
-			throw new Exception("The following turn is not possible: " + turn);
+			System.out.println("The following turn is not possible: " + turn);
+		}
+	}
+	
+	public void UndoTurn(String turn) {
+		if(turn.length() == 1) {
+			this.applyTurn(turn + "\'");
+		}
+		else {
+			switch(turn.charAt(1)) {
+			case '2':
+				this.applyTurn(turn);
+				break;
+			case '\'':
+				this.applyTurn(turn.substring(0,1));
+				break;
+			default:
+				System.out.println("\"The following turn is not possible: \" + turn");
+			}
 		}
 	}
 	
@@ -159,6 +179,7 @@ class Cube {
 			return side;
 		}
 		
+		//returns edges of given face in the order they will be cyclicly exchanged when the face turn is applied
 		public Edge[] getFaceEdges(String face) {
 			Edge[] side;
 			switch(face) {
