@@ -67,6 +67,9 @@ class Cube {
 	//currently bad but easy to understand logic
 	//looking for a smarter encoding of pieces to simplify turn logic
 	public void applyTurn(String turn){
+		if(turn.isEmpty()) {
+			return;
+		}
 		switch(turn.length()) {
 		//if only one turn, then apply
 		case 1:
