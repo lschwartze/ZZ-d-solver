@@ -108,6 +108,7 @@ class Solver implements ActionListener{
 			solution += s + " ";
 		}
 		//apply eo to cube
+		cube.scramble(eo);;
 		solution += "\t //EO <br/>";		
 		//##############################################################################################
 		//in this stage, only double turns of front and back faces are needed
@@ -173,7 +174,7 @@ class Solver implements ActionListener{
 		}
 		left_block += step1;
 		cube.scramble(Yo_array);
-		
+
 		//step 2: move edge and corner away from right layer, can be done in at most 2 turns
 		String step2 = step2_4(2);
 		left_block += step2;
@@ -224,8 +225,36 @@ class Solver implements ActionListener{
 		left_block = Simplify(left_block);
 		solution += left_block + "\t //Left 2x2x3 <br/>";
 		
-		//test scramble: R L' B' D' F R' U2 D' L U2 F2 D' F2 D F2 U L2 F2 D2 B2 D
+		moves.remove("L");
+		moves.remove("L2");
+		moves.remove("L\'");
+		//################# Corner Permutation #################################
+		//step 1: permute D layer corners to check U layer permutation
+		String CP = "";
+		String CP1 = CP1("", " ", 0, 5);
+		String[] CP1array = CP1.split("\\s+");
 		
+		while(CP1array.length > 1) {
+			cube = new Cube();
+			cube.scramble(scramble_array);
+			cube.scramble(eo);
+			cube.scramble(EOLine);
+			cube.scramble(left_block.split("\\s+"));
+			tmp = CP1("", " ", 0, CP1array.length-1);
+			if(tmp.equals("fail")) {
+				break;
+			}
+			CP1 = tmp;
+			CP1array = CP1.split("\\s+");
+		}
+		
+		cube.scramble(CP1array);
+		CP += CP1;
+		System.out.println(CP);
+		
+		//step 2: solve U layer permutation. If adjacent swap, use A perm, for diagonal swap find optimal solution:
+		//R U' R' U' F2 D' B L B' D F2 (11)
+		//U R B2 L2 D L D' L B2 R' (10)
 		displaySolution();
 		return;
 	}
@@ -446,7 +475,8 @@ class Solver implements ActionListener{
 			case 6:
 				return "R\' ";
 			case 8:
-				return "U2 R2 ";
+				cube.applyTurn("U2");
+				return "U2 " + step2_4(4) + " ";
 		}
 		return stepp;
 	}
@@ -498,6 +528,29 @@ class Solver implements ActionListener{
 		return "fail";
 	}
 	
+	public String CP1(String stepp, String previous_move, int num_turns, int max_depth) {
+		if(cube.YGR.getCurr_pos().equals("DFR") && cube.YBR.getCurr_pos().equals("DBR")) {
+			return stepp;
+		}
+		if(num_turns == max_depth) {
+			return "fail";
+		}
+		
+		for(String move: moves) {
+			if(move.charAt(0) == previous_move.charAt(0)){
+				continue;
+			}
+		
+			this.cube.applyTurn(move);
+			String inter_res = CP1(stepp + move + " ", move, num_turns+1, max_depth);
+			if(!inter_res.equals("fail")) {
+				return inter_res;
+			}
+			this.cube.UndoTurn(move);
+		}
+		return "fail";
+	}
+	
 	public static void main(String args[]) {
 		new Solver();
 	}	
@@ -522,15 +575,23 @@ class Solver implements ActionListener{
 			flag = false;
 			for(int i = 0; i<arr.length-1; i++) {
 				if(arr[i].charAt(0) == arr[i+1].charAt(0)) {
-					arr[i] = Combine(arr[i],arr[i+1]) + " ";
+					flag = true;
+					String temp = Combine(arr[i],arr[i+1]) + " ";
+					if(temp.endsWith("4 ")) {
+						arr[i] = "";
+					}
+					else {
+						arr[i] = temp;
+					}
 					arr[i+1] = "";
 					i++;
-					flag = true;
 				}
 			}
 			s = "";
 			for(String a: arr) {
-				s += a + " ";
+				if(!a.isEmpty()) {
+					s += a + " ";
+				}
 			}
 		}
 		return s;
