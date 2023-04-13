@@ -170,13 +170,13 @@ class Solver implements ActionListener{
 				break;
 			}
 			step1 = tmp;
-			Yo_array = tmp.split("\\s+");
+			Yo_array = step1.split("\\s+");
 		}
 		left_block += step1;
 		cube.scramble(Yo_array);
 
 		//step 2: move edge and corner away from right layer, can be done in at most 2 turns
-		String step2 = step2_4(2);
+		String step2 = step2_4(2, "", " ", " ", 0, 3);
 		left_block += step2;
 		
 		//step 3: solve back left F2L pair, only left and up turn needed, at most 12 turns
@@ -199,7 +199,7 @@ class Solver implements ActionListener{
 		cube.scramble(step3_array);
 
 		//step 4: move edge and corner away from right layer, can be done in at most 2 turns
-		String step4 = step2_4(4);
+		String step4 = step2_4(4, "", " ", " ", 0, 3);
 		left_block += step4;
 		
 		//step 5: solve FL F2L pair in at most 12 turns
@@ -250,11 +250,34 @@ class Solver implements ActionListener{
 		
 		cube.scramble(CP1array);
 		CP += CP1;
-		System.out.println(CP);
 		
 		//step 2: solve U layer permutation. If adjacent swap, use A perm, for diagonal swap find optimal solution:
-		//R U' R' U' F2 D' B L B' D F2 (11)
+		//AaPerm: R' F R' B2 R F' R' B2 R2
+		//AbPerm: R2 B2 R F R' B2 R F' R
 		//U R B2 L2 D L D' L B2 R' (10)
+		
+		//find correctly permuted corners
+		Corner[] top = new Corner[] {cube.WGO, cube.WBO, cube.WGR, cube.WBR};
+		String preAUF = "";
+		String alg = "";
+		for(int i = 0; i<4; i++) {
+			String corners = CP(top);
+			int cnt = (int) corners.length()/4;
+			if(cnt == 4) {
+				break;
+			}
+			if(cnt == 2) {
+				System.out.println(corners);
+				alg = solveCP(corners);
+				break;
+			}
+			cube.applyTurn("U");
+			preAUF += "U ";
+		}
+		CP = CP + preAUF + alg + " ";
+		CP = Simplify(CP);
+		solution += CP + "\t //Corner Permutation";
+		
 		displaySolution();
 		return;
 	}
@@ -447,38 +470,39 @@ class Solver implements ActionListener{
 	}
 	
 	//move important F2L pieces away from R layer, then only L and U turns needed (at most 2 turns)
-	public String step2_4(int step) {
-		String stepp = "";
-		for(int i = 0; i<4; i++) {
-			String c_pos = "";
-			String e_pos = "";
-			if(step == 2) {
-				c_pos = cube.YBO.getCurr_pos();
-				e_pos = cube.BO.getCurr_pos();
-			}
-			else {
-				c_pos = cube.YGO.getCurr_pos();
-				e_pos = cube.GO.getCurr_pos();
-			}
-			if((c_pos.indexOf("R") == -1 || c_pos.equals("UFR") || c_pos.equals("UBR")) && (e_pos.indexOf("R") == -1 || e_pos.equals("UR"))) {
-				break;
-			}
-			cube.applyTurn("R");
-			stepp += "R ";
+	public String step2_4(int step, String stepp, String previous_move, String prevprev, int num_turns, int max_depth) {
+		String c_pos = "";
+		String e_pos = "";
+		if(step == 2) {
+			c_pos = cube.YBO.getCurr_pos();
+			e_pos = cube.BO.getCurr_pos();
 		}
-		//add a blank space to solution and simplify (e.g. R R to R2)
-		switch(stepp.length()) {
-			case 2:
-				return stepp;
-			case 4:
-				return "R2 ";
-			case 6:
-				return "R\' ";
-			case 8:
-				cube.applyTurn("U2");
-				return "U2 " + step2_4(4) + " ";
+		else {
+			c_pos = cube.YGO.getCurr_pos();
+			e_pos = cube.GO.getCurr_pos();
 		}
-		return stepp;
+		if((c_pos.indexOf("R") == -1 || c_pos.equals("UFR") || c_pos.equals("UBR")) && (e_pos.indexOf("R") == -1 || e_pos.equals("UR"))) {
+			return stepp;
+		}
+		if(max_depth == num_turns) {
+			return "fail";
+		}
+		
+		for(String move: moves) {
+			//if move is modification of previous one, or turns opposite side from previous one but the same as the one before, skip 
+			if((move.charAt(0) == previous_move.charAt(0)) || (move.charAt(0) == prevprev.charAt(0) && isOpposite(move.charAt(0), previous_move.charAt(0)))) {
+				continue;
+			}
+			
+			this.cube.applyTurn(move);
+			String inter_res = step2_4(step, stepp + move + " ", move, previous_move, num_turns+1, max_depth);
+			if(!inter_res.equals("fail")) {
+				return inter_res;
+			}
+			this.cube.UndoTurn(move);
+			
+		}
+		return "fail";
 	}
 	
 	//solves BL and FL F2L pairs, needs at most 12 turns
@@ -549,6 +573,33 @@ class Solver implements ActionListener{
 			this.cube.UndoTurn(move);
 		}
 		return "fail";
+	}
+	
+	public String CP(Corner[] top) {
+		String corners = "";
+		for(Corner c: top) {
+			if(c.getCurr_pos().equals(c.sol_pos)) {
+				corners += c.getCurr_pos() + " ";
+			}
+		}
+		return corners;
+	}
+	
+	public String solveCP(String corners) {
+		Map<Character, String> map = new HashMap<Character, String>();
+		map.put('F', "L\' B L\' F2 L B\' L\' F2 L2"); //front headlights
+		map.put('B', "R\' F R\' B2 R F\' R\' B2 R2"); //back headlights
+		map.put('R', "R2 B2 R F R\' B2 R F\' R"); //right headlights
+		map.put('L', "F R\' F L2 F\' R F L2 F2"); //left headlights
+		String[] top = corners.split("\\s+");
+		String alg = "U R B2 L2 D L D\' L B2 R\'"; //no headlights
+		char[] pos = new char[] {'F', 'R', 'L', 'B'};
+		for(char c: pos) {
+			if(top[0].indexOf(c) != -1 && top[1].indexOf(c) != -1) {
+				alg = map.get(c);
+			}
+		}
+		return alg;
 	}
 	
 	public static void main(String args[]) {
