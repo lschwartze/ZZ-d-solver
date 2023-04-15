@@ -23,6 +23,7 @@ class Solver implements ActionListener{
 	JButton button;
 	JTextField text;
 	JFrame frame2;
+	JLabel label2;
 	String scramble;
 	Cube cube;
 	Set<String> moves = new HashSet<>(Arrays.asList("R", "R\'", "R2",
@@ -56,23 +57,17 @@ class Solver implements ActionListener{
 		if(e.getSource() == this.button) {
 			scramble = this.text.getText();
 		}	
-		
 		try {
 			solve();
 		} catch (Exception e1) {
+			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 	}
 	
 	//start solving process
 	public void solve() throws Exception {
-		while(scramble == null) {
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		final long startTime = System.currentTimeMillis();
 		//######################## check if scramble is feasible #########################################
 		if(checkScramble(scramble)) {
 			this.label.setText("calculating...");
@@ -94,54 +89,57 @@ class Solver implements ActionListener{
 		//max_depth = 7: every eo can be solved in at most 7 turns
 		//searches eo for tmp_cube, once the best is found, it is applied to cube
 		//first, eo is a suboptimal eo, that will be greedily improved
-		String[] eo = EO("", " ", " ", 0, 7).split("\\s+");
+		String eo = EO("", " ", " ", 0, 7);
+		String[] eoarray = eo.split("\\s+");
 		//search for optimal eo
 		String tmp = "";
-		while(eo.length > 0) {
+		while(eo.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			tmp = EO("", " ", " ", 0, eo.length-1);
+			tmp = EO("", " ", " ", 0, eoarray.length-1);
 			if(tmp.equals("fail")) {
 				break;
 			}
-			eo = tmp.split("\\s+");
+			eo = tmp;
+			eoarray = eo.split("\\s+");
 		}
-		for(String s: eo) {
-			solution += s + " ";
-		}
+		solution += eo;
 		//apply eo to cube
-		cube.scramble(eo);;
+		cube.scramble(eoarray);
 		solution += "\t //EO <br/>";	
-		turns += eo.length;
+		turns += eoarray.length;
 		//##############################################################################################
 		//in this stage, only double turns of front and back faces are needed
 		moves.remove("F");
 		moves.remove("F\'");
 		moves.remove("B");
 		moves.remove("B\'");
+		System.out.println(solution);
 		
 		//################################# EOLine #####################################################
 		//solving EOLine in fewest possible moves
 		//EOLine with max_depth 5 because the edges can be solved in at most 5 turns
-		String[] EOLine = EOLine("", " ", " ", 0, 5).split("\\s+");
+		String EOLine = EOLine("", " ", " ", 0, 5);
+		String[] linearray = EOLine.split("\\s+");
 		//greedily search for better solutions
-		while(EOLine.length > 0) {
+		while(EOLine.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			cube.scramble(eo);
-			tmp = EOLine("", " ", " ", 0, EOLine.length-1);
+			cube.scramble(eoarray);
+			tmp = EOLine("", " ", " ", 0, linearray.length-1);
 			if(tmp.equals("fail")) {
 				break;
 			}
-			EOLine = tmp.split("\\s+");
+			EOLine = tmp;
+			linearray = EOLine.split("\\s+");
+			//apply EOLine to cube
 		}
-		for(String s: EOLine) {
-			solution += s + " ";
-		}
-		//apply EOLine to cube
-		cube.scramble(EOLine);
+		cube.scramble(linearray);
+		solution += EOLine;
 		solution += "\t //EOLine <br/>";
-		turns += EOLine.length;
+		turns += linearray.length;
+		System.out.println(solution);
+
 		//##############################################################################################
 		
 		//the following moves are not needed anymore
@@ -164,11 +162,11 @@ class Solver implements ActionListener{
 		String step1 = Yo("", " ", " ", 0 ,3);
 		String[] Yo_array = step1.split("\\s+");
 		//greedily improve step 1:
-		while(Yo_array.length > 0) {
+		while(step1.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			cube.scramble(eo);
-			cube.scramble(EOLine);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
 			tmp = Yo("", " ", " ", 0, Yo_array.length - 1);
 			if(tmp.equals("fail")) {
 				break;
@@ -186,11 +184,11 @@ class Solver implements ActionListener{
 		//step 3: solve back left F2L pair, only left and up turn needed, at most 12 turns
 		String step3 = step3_5(3, "", " ", 0, 12);
 		String[] step3_array = step3.split("\\s+");
-		while(step3_array.length > 0) {
+		while(step3.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			cube.scramble(eo);
-			cube.scramble(EOLine);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
 			cube.scramble(left_block.split("\\s+"));
 			tmp = step3_5(3, "", " ", 0, step3_array.length-1);
 			if(tmp.equals("fail")) {
@@ -209,11 +207,11 @@ class Solver implements ActionListener{
 		//step 5: solve FL F2L pair in at most 12 turns
 		String step5 = step3_5(5, "", " ", 0, 12);
 		String[] step5_array = step5.split("\\s+");
-		while(step5_array.length > 0) {
+		while(step5.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			cube.scramble(eo);
-			cube.scramble(EOLine);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
 			cube.scramble(left_block.split("\\s+"));
 			tmp = step3_5(5, "", " ", 0, step5_array.length-1);
 			if(tmp.equals("fail")) {
@@ -232,18 +230,19 @@ class Solver implements ActionListener{
 		moves.remove("L");
 		moves.remove("L2");
 		moves.remove("L\'");
-		
+		System.out.println(solution);
+
 		//################# Corner Permutation #################################
 		//step 1: permute D layer corners to check U layer permutation
 		String CP = "";
 		String CP1 = CP1("", " ", 0, 5);
 		String[] CP1array = CP1.split("\\s+");
 		
-		while(CP1array.length > 0) {
+		while(CP1.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			cube.scramble(eo);
-			cube.scramble(EOLine);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
 			cube.scramble(left_block.split("\\s+"));
 			tmp = CP1("", " ", 0, CP1array.length-1);
 			if(tmp.equals("fail")) {
@@ -282,6 +281,7 @@ class Solver implements ActionListener{
 		CP = Simplify(CP);
 		solution += CP + "\t //Corner Permutation <br/>";
 		turns += CP.split("\\s+").length;
+		System.out.println(solution);
 
 		//################################ right block ##############################################
 		//step 1: yellow red edge, at most 2 turns
@@ -295,11 +295,11 @@ class Solver implements ActionListener{
 		//step 2, 3: solve F2L pairs in at most 11 moves each
 		String F2L = step2_3("", " ", 0, 22);
 		String[] F2Larray = F2L.split("\\s+");
-		while(F2Larray.length > 0) {
+		while(F2L.length() > 0) {
 			cube = new Cube();
 			cube.scramble(scramble_array);
-			cube.scramble(eo);
-			cube.scramble(EOLine);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
 			cube.scramble(left_block.split("\\s+"));
 			cube.scramble(CP.split("\\s+"));
 			cube.scramble(right_block.split("\\s+"));
@@ -315,23 +315,64 @@ class Solver implements ActionListener{
 		right_block = Simplify(right_block);
 		solution += right_block + "\t //right F2L block <br/>";
 		turns += right_block.split("\\s+").length;
-		
+		System.out.println(solution);
+
 		//######################### COLL #######################################
 		Corner[] F2LCorners = new Corner[] {cube.YGR, cube.YBR};
 		Edge[] F2LEdges = new Edge[] {cube.YR, cube.GR, cube.BR};
 		String coll = COLL("", " ", 0, 16, F2LCorners, F2LEdges);
 		String[] collarray = coll.split("\\s+");
+		while(coll.length() > 0) {
+			cube = new Cube();
+			cube.scramble(scramble_array);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
+			cube.scramble(left_block.split("\\s+"));
+			cube.scramble(CP.split("\\s+"));
+			cube.scramble(right_block.split("\\s+"));
+			F2LCorners = new Corner[] {cube.YGR, cube.YBR};
+			F2LEdges = new Edge[] {cube.YR, cube.GR, cube.BR};
+			tmp = COLL("", " ", 0, collarray.length-1, F2LCorners, F2LEdges);
+			if(tmp.equals("fail")) {
+				break;
+			}
+			coll = tmp;
+			collarray = coll.split("\\s+");
+		}
+		cube.scramble(collarray);
 		solution += coll + "\t //COLL <br/>";
 		turns += collarray.length;
-		
+		System.out.println(solution);
+
 		//#################################### EPLL ###################################
 		Corner[] solvedCorner = new Corner[] {cube.YGR, cube.YBR, cube.WGR, cube.WGO, cube.WBR, cube.WBO};
 		Edge[] solvedEdge = new Edge[] {cube.YR, cube.GR, cube.BR, cube.WR, cube.WG, cube.WO, cube.WB};
-		String epll = twoGLL("", " ", 0, 17, solvedCorner, solvedEdge);
+		String epll = EPLL("", " ", 0, 17, solvedCorner, solvedEdge);
+		String[] epllarray = epll.split("\\s+");
+		while(epll.length() > 0) {
+			cube = new Cube();
+			cube.scramble(scramble_array);
+			cube.scramble(eoarray);
+			cube.scramble(linearray);
+			cube.scramble(left_block.split("\\s+"));
+			cube.scramble(CP.split("\\s+"));
+			cube.scramble(right_block.split("\\s+"));
+			cube.scramble(collarray);
+			solvedCorner = new Corner[] {cube.YGR, cube.YBR, cube.WGR, cube.WGO, cube.WBR, cube.WBO};
+			solvedEdge = new Edge[] {cube.YR, cube.GR, cube.BR, cube.WR, cube.WG, cube.WO, cube.WB};
+			tmp = EPLL("", " ", 0, epllarray.length-1, solvedCorner, solvedEdge);
+			if(tmp.equals("fail")) {
+				break;
+			}
+			epll = tmp;
+			epllarray = epll.split("\\s+");
+		}
+		cube.scramble(epllarray);
 		solution += epll + "\t //EPLL <br/>";
 		turns += epll.split("\\s+").length;
-		solution += "number of turns: " + turns;
-		
+		solution += "number of turns: " + turns + "<br/>";
+		final long endTime = System.currentTimeMillis();
+		solution += "execution time in seconds: " + (int)(endTime - startTime)/1000;
 		displaySolution();
 		return;
 	}
@@ -743,7 +784,7 @@ class Solver implements ActionListener{
 		return "fail";
 	}
 	
-	public String twoGLL(String epll, String previous_move, int num_turns, int max_depth, Corner[] solvedCorners, Edge[] solvedEdges) {
+	public String EPLL(String epll, String previous_move, int num_turns, int max_depth, Corner[] solvedCorners, Edge[] solvedEdges) {
 		boolean flag = true;
 		for(Corner c: solvedCorners) {
 			if(!c.getCurr_pos().equals(c.sol_pos) || c.getOrientation() != 0) {
@@ -772,7 +813,7 @@ class Solver implements ActionListener{
 			}
 		
 			this.cube.applyTurn(move);
-			String inter_res = twoGLL(epll + move + " ", move, num_turns+1, max_depth, solvedCorners, solvedEdges);
+			String inter_res = EPLL(epll + move + " ", move, num_turns+1, max_depth, solvedCorners, solvedEdges);
 			if(!inter_res.equals("fail")) {
 				return inter_res;
 			}
@@ -790,8 +831,9 @@ class Solver implements ActionListener{
 	public void displaySolution() {
 		String display = "<html>Scramble: " + this.scramble + "<br/>Solution:<br/>" + this.solution + "</html>";
 		frame2 = new JFrame("Solution");
-		JLabel label2 = new JLabel(display);
+		label2 = new JLabel(display);
 		frame2.add(label2, BorderLayout.NORTH);
+		label2.setVisible(true);
 		frame2.pack();
 		frame2.setSize(500, 500);
 		frame2.setVisible(true);
